@@ -1,0 +1,10 @@
+#!/usr/bin/sh
+#-append "root=/dev/sda rw" \
+#-serial stdio -append "root=/dev/sda rw console=ttyS0" -display none \
+
+qemu-kvm -kernel ./vmlinuz \
+-object rng-random,id=virtio-rng0,filename=/dev/urandom \
+-device virtio-rng-pci,rng=virtio-rng0,id=rng0,bus=pci.0,addr=0x9 \
+-netdev user,id=net0,net=192.168.103.0/24 -device virtio-net-pci,netdev=net0 \
+-serial stdio -append "root=/dev/sda rw console=ttyS0" -display none \
+-drive file=./disk.img,format=file

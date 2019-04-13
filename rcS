@@ -1,0 +1,7 @@
+#!/bin/sh
+mount -t proc none /proc
+mount -t sysfs none /sys
+depmod
+modprobe virtio-net
+ip link set eth0 up
+udhcpc

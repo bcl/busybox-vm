@@ -1,0 +1,44 @@
+#!/usr/bin/bash
+
+INSTALLROOT=$PWD/installroot/
+BUSYBOX=$PWD/busybox-1.28.3-3.fc30.x86_64.rpm
+DISK=$PWD/disk.img
+SETUP_SYSTEM=$PWD/setup-system.sh
+KERNEL_CORE=$PWD/kernel-core-5.0.6-300.fc30.x86_64.rpm
+
+function cleanup {
+    sudo umount "$INSTALLROOT"
+}
+
+if [ ! -e "$INSTALLROOT" ]; then
+    mkdir "$INSTALLROOT"
+fi
+
+# Make a raw filesystem image
+if [ ! -e "$DISK" ]; then
+    fallocate -l 1G "$DISK"
+    mkfs.ext4 "$DISK"
+fi
+
+sudo mount "$DISK" "$INSTALLROOT"
+trap cleanup EXIT
+
+# Initialize the rpm database
+sudo rpmdb --initdb --root "$INSTALLROOT"
+
+# Install busybox (WHY DO I NEED TO BE ROOT!)
+sudo rpm -Uv --root="$INSTALLROOT" "$BUSYBOX"
+
+# Setup busybox and system directories
+sudo cp "$SETUP_SYSTEM" "$INSTALLROOT"/setup.sh
+sudo chroot "$INSTALLROOT" /setup.sh
+
+# Install the virtio kernel modules
+rpm2cpio "$KERNEL_CORE" | sudo cpio -idD "$INSTALLROOT" '*virtio*' '*failover*'
+
+# mount /proc and /sys at boot time
+sudo cp ./rcS "$INSTALLROOT"/etc/init.d/
+
+# udhcpc script
+sudo mkdir -p "$INSTALLROOT"/usr/share/udhcpc/
+sudo cp ./simple.script "$INSTALLROOT"/usr/share/udhcpc/default.script
